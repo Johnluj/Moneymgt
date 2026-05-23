@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Receipt, Wallet, PieChart, LogOut, CloudSync } from 'lucide-react';
+import { LayoutDashboard, Receipt, Wallet, PieChart, LogOut, CloudSync, Target } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useAppContext } from '../context/AppContext';
 import { clsx, type ClassValue } from 'clsx';
@@ -17,6 +17,7 @@ const Layout: React.FC = () => {
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/transactions', icon: Receipt, label: 'History' },
     { to: '/budget', icon: Wallet, label: 'Budget' },
+    { to: '/savings', icon: Target, label: 'Savings' },
     { to: '/analytics', icon: PieChart, label: 'Analytics' },
   ];
 

@@ -6,6 +6,7 @@ import { NotificationProvider } from './context/NotificationContext';
 import Dashboard from './pages/Dashboard';
 import Transactions from './pages/Transactions';
 import Budget from './pages/Budget';
+import Savings from './pages/Savings';
 import Analytics from './pages/Analytics';
 import Login from './pages/Login';
 
@@ -27,6 +28,7 @@ function App() {
                 <Route index element={<Dashboard />} />
                 <Route path="transactions" element={<Transactions />} />
                 <Route path="budget" element={<Budget />} />
+              <Route path="savings" element={<Savings />} />
                 <Route path="analytics" element={<Analytics />} />
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,13 +1,16 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import type { Transaction, Budget } from '../types';
+import type { Transaction, Budget, SavingsGoal } from '../types';
 import { useNotification } from './NotificationContext';
 
 interface AppContextType {
   transactions: Transaction[];
   budgets: Budget[];
+  savingsGoals: SavingsGoal[];
   addTransaction: (transaction: Omit<Transaction, 'id'>) => void;
   deleteTransaction: (id: string) => void;
   updateBudget: (budget: Budget) => void;
+  addSavingsGoal: (goal: Omit<SavingsGoal, 'id'>) => void;
+  updateSavingsGoal: (goal: SavingsGoal) => void;
   totalIncome: number;
   totalExpenses: number;
   balance: number;
@@ -36,6 +39,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     ];
   });
 
+  const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>(() => {
+    const saved = localStorage.getItem('savingsGoals');
+    return saved ? JSON.parse(saved) : [];
+  });
+
   useEffect(() => {
     localStorage.setItem('transactions', JSON.stringify(transactions));
   }, [transactions]);
@@ -43,6 +51,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem('budgets', JSON.stringify(budgets));
   }, [budgets]);
+
+  useEffect(() => {
+    localStorage.setItem('savingsGoals', JSON.stringify(savingsGoals));
+  }, [savingsGoals]);
 
   const addTransaction = useCallback((transaction: Omit<Transaction, 'id'>) => {
     const newTransaction = {
@@ -95,6 +107,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showNotification(`${budget.category} budget updated`, 'success');
   };
 
+  const addSavingsGoal = (goal: Omit<SavingsGoal, 'id'>) => {
+    const newGoal = { ...goal, id: crypto.randomUUID() };
+    setSavingsGoals((prev) => [...prev, newGoal]);
+    showNotification(`Savings goal "${goal.name}" created`, 'success');
+  };
+
+  const updateSavingsGoal = (goal: SavingsGoal) => {
+    setSavingsGoals((prev) => prev.map(g => g.id === goal.id ? goal : g));
+  };
+
   const totalIncome = transactions
     .filter((t) => t.type === 'income')
     .reduce((acc, t) => acc + t.amount, 0);
@@ -110,9 +132,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       value={{
         transactions,
         budgets,
+        savingsGoals,
         addTransaction,
         deleteTransaction,
         updateBudget,
+        addSavingsGoal,
+        updateSavingsGoal,
         totalIncome,
         totalExpenses,
         balance,

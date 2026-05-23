@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { LogIn, Mail, User as UserIcon } from 'lucide-react';
 
 const Login: React.FC = () => {
   const { login } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
 
@@ -11,6 +13,7 @@ const Login: React.FC = () => {
     e.preventDefault();
     if (email && name) {
       login(email, name);
+      navigate('/');
     }
   };
 
@@ -23,6 +26,9 @@ const Login: React.FC = () => {
           </div>
           <h2 className="text-3xl font-bold text-slate-800">Welcome Back</h2>
           <p className="text-slate-500 mt-2">Sign in to manage your budget</p>
+          <div className="mt-4 p-2 bg-amber-50 border border-amber-100 rounded-lg text-[10px] text-amber-700 font-medium">
+            DEMONSTRATION MODE: Authentication is simulated for preview.
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -74,11 +80,17 @@ const Login: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <button className="flex items-center justify-center gap-2 bg-white border border-slate-200 py-3 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors">
+          <button
+            onClick={() => { login('google@example.com', 'Google User'); navigate('/'); }}
+            className="flex items-center justify-center gap-2 bg-white border border-slate-200 py-3 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors"
+          >
             <img src="https://www.google.com/favicon.ico" alt="Google" className="w-4 h-4" />
             Google
           </button>
-          <button className="flex items-center justify-center gap-2 bg-white border border-slate-200 py-3 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors">
+          <button
+            onClick={() => { login('apple@example.com', 'Apple User'); navigate('/'); }}
+            className="flex items-center justify-center gap-2 bg-white border border-slate-200 py-3 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors"
+          >
             <img src="https://www.apple.com/favicon.ico" alt="Apple" className="w-4 h-4" />
             Apple
           </button>

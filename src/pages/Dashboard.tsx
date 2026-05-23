@@ -4,7 +4,7 @@ import { ArrowUpRight, ArrowDownLeft, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Dashboard: React.FC = () => {
-  const { balance, totalIncome, totalExpenses, transactions } = useAppContext();
+  const { balance, totalIncome, totalExpenses, transactions, savingsGoals } = useAppContext();
 
   const recentTransactions = transactions.slice(0, 5);
 
@@ -36,6 +36,32 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Savings Progress */}
+      {savingsGoals.length > 0 && (
+        <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
+          <h3 className="font-bold text-slate-800 mb-3 text-sm">Savings Progress</h3>
+          <div className="space-y-4">
+            {savingsGoals.slice(0, 2).map(goal => {
+              const percent = Math.min((goal.currentAmount / goal.targetAmount) * 100, 100);
+              return (
+                <div key={goal.id}>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="font-medium text-slate-600">{goal.name}</span>
+                    <span className="text-slate-400">₦{goal.currentAmount.toLocaleString()} / ₦{goal.targetAmount.toLocaleString()}</span>
+                  </div>
+                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-green-500 transition-all duration-500"
+                      style={{ width: `${percent}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Quick Actions */}
       <div className="grid grid-cols-2 gap-4">

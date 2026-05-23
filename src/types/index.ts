@@ -14,6 +14,13 @@ export interface Budget {
   limit: number;
 }
 
+export interface SavingsGoal {
+  id: string;
+  name: string;
+  targetAmount: number;
+  currentAmount: number;
+}
+
 export interface User {
   id: string;
   email: string;
