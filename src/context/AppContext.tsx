@@ -1,16 +1,18 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { Transaction, Budget, SavingsGoal } from '../types';
 import { useNotification } from './NotificationContext';
+import { useAuth } from './AuthContext';
+import { apiFetch } from '../utils/api';
 
 interface AppContextType {
   transactions: Transaction[];
   budgets: Budget[];
   savingsGoals: SavingsGoal[];
-  addTransaction: (transaction: Omit<Transaction, 'id'>) => void;
-  deleteTransaction: (id: string) => void;
-  updateBudget: (budget: Budget) => void;
-  addSavingsGoal: (goal: Omit<SavingsGoal, 'id'>) => void;
-  updateSavingsGoal: (goal: SavingsGoal) => void;
+  addTransaction: (transaction: Omit<Transaction, 'id'>) => Promise<void>;
+  deleteTransaction: (id: string) => Promise<void>;
+  updateBudget: (budget: Budget) => Promise<void>;
+  addSavingsGoal: (goal: Omit<SavingsGoal, 'id'>) => Promise<void>;
+  updateSavingsGoal: (goal: SavingsGoal) => Promise<void>;
   totalIncome: number;
   totalExpenses: number;
   balance: number;
@@ -21,52 +23,49 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { showNotification } = useNotification();
+  const { isAuthenticated } = useAuth();
   const [isSyncing, setIsSyncing] = useState(false);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
 
-  const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    const saved = localStorage.getItem('transactions');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [budgets, setBudgets] = useState<Budget[]>(() => {
-    const saved = localStorage.getItem('budgets');
-    return saved ? JSON.parse(saved) : [
-      { category: 'Food', limit: 0 },
-      { category: 'Transport', limit: 0 },
-      { category: 'Bills', limit: 0 },
-      { category: 'Entertainment', limit: 0 },
-      { category: 'Shopping', limit: 0 },
-    ];
-  });
-
-  const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>(() => {
-    const saved = localStorage.getItem('savingsGoals');
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  useEffect(() => {
-    localStorage.setItem('transactions', JSON.stringify(transactions));
-  }, [transactions]);
-
-  useEffect(() => {
-    localStorage.setItem('budgets', JSON.stringify(budgets));
-  }, [budgets]);
-
-  useEffect(() => {
-    localStorage.setItem('savingsGoals', JSON.stringify(savingsGoals));
-  }, [savingsGoals]);
-
-  const addTransaction = useCallback((transaction: Omit<Transaction, 'id'>) => {
-    const newTransaction = {
-      ...transaction,
-      id: crypto.randomUUID(),
-    };
-
-    // Simulate API sync
+  const fetchData = useCallback(async () => {
+    if (!isAuthenticated) return;
     setIsSyncing(true);
-    setTimeout(() => {
-      setTransactions((prev) => [newTransaction, ...prev]);
+    try {
+      const [transactionsData, budgetsData, goalsData] = await Promise.all([
+        apiFetch('/transactions'),
+        apiFetch('/budgets'),
+        apiFetch('/savings-goals')
+      ]);
+      setTransactions(transactionsData);
+      setBudgets(budgetsData.length ? budgetsData : [
+        { category: 'Food', limit: 0 },
+        { category: 'Transport', limit: 0 },
+        { category: 'Bills', limit: 0 },
+        { category: 'Entertainment', limit: 0 },
+        { category: 'Shopping', limit: 0 },
+      ]);
+      setSavingsGoals(goalsData);
+    } catch (error) {
+      console.error('Failed to fetch data', error);
+    } finally {
       setIsSyncing(false);
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const addTransaction = useCallback(async (transaction: Omit<Transaction, 'id'>) => {
+    setIsSyncing(true);
+    try {
+      const newTransaction = await apiFetch('/transactions', {
+        method: 'POST',
+        body: JSON.stringify(transaction),
+      });
+      setTransactions((prev) => [newTransaction, ...prev]);
       showNotification(`${transaction.type === 'income' ? 'Income' : 'Expense'} added successfully`, 'success');
 
       // Check budget limits
@@ -79,42 +78,81 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
           if (spent > budget.limit) {
             showNotification(`Warning: You have exceeded your budget for ${transaction.category}!`, 'warning');
-          } else if (spent > budget.limit * 0.8) {
-            showNotification(`Heads up: You've used 80% of your ${transaction.category} budget.`, 'info');
           }
         }
       }
-    }, 800);
+    } catch (error: any) {
+      showNotification(error.message, 'error');
+    } finally {
+      setIsSyncing(false);
+    }
   }, [budgets, transactions, showNotification]);
 
-  const deleteTransaction = (id: string) => {
-    setTransactions((prev) => prev.filter((t) => t.id !== id));
+  const deleteTransaction = async (id: string) => {
+    setIsSyncing(true);
+    try {
+      await apiFetch(`/transactions/${id}`, { method: 'DELETE' });
+      setTransactions((prev) => prev.filter((t) => t.id !== id));
+    } catch (error: any) {
+      showNotification(error.message, 'error');
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
-  const updateBudget = (budget: Budget) => {
-    setBudgets((prev) => {
-      const index = prev.findIndex((b) => b.category === budget.category);
-      let next;
-      if (index > -1) {
-        const newBudgets = [...prev];
-        newBudgets[index] = budget;
-        next = newBudgets;
-      } else {
-        next = [...prev, budget];
-      }
-      return next;
-    });
-    showNotification(`${budget.category} budget updated`, 'success');
+  const updateBudget = async (budget: Budget) => {
+    setIsSyncing(true);
+    try {
+      await apiFetch('/budgets', {
+        method: 'POST',
+        body: JSON.stringify(budget),
+      });
+      setBudgets((prev) => {
+        const index = prev.findIndex((b) => b.category === budget.category);
+        if (index > -1) {
+          const next = [...prev];
+          next[index] = budget;
+          return next;
+        }
+        return [...prev, budget];
+      });
+      showNotification(`${budget.category} budget updated`, 'success');
+    } catch (error: any) {
+      showNotification(error.message, 'error');
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
-  const addSavingsGoal = (goal: Omit<SavingsGoal, 'id'>) => {
-    const newGoal = { ...goal, id: crypto.randomUUID() };
-    setSavingsGoals((prev) => [...prev, newGoal]);
-    showNotification(`Savings goal "${goal.name}" created`, 'success');
+  const addSavingsGoal = async (goal: Omit<SavingsGoal, 'id'>) => {
+    setIsSyncing(true);
+    try {
+      const newGoal = await apiFetch('/savings-goals', {
+        method: 'POST',
+        body: JSON.stringify(goal),
+      });
+      setSavingsGoals((prev) => [...prev, newGoal]);
+      showNotification(`Savings goal "${goal.name}" created`, 'success');
+    } catch (error: any) {
+      showNotification(error.message, 'error');
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
-  const updateSavingsGoal = (goal: SavingsGoal) => {
-    setSavingsGoals((prev) => prev.map(g => g.id === goal.id ? goal : g));
+  const updateSavingsGoal = async (goal: SavingsGoal) => {
+    setIsSyncing(true);
+    try {
+      await apiFetch(`/savings-goals/${goal.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ currentAmount: goal.currentAmount }),
+      });
+      setSavingsGoals((prev) => prev.map(g => g.id === goal.id ? goal : g));
+    } catch (error: any) {
+      showNotification(error.message, 'error');
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const totalIncome = transactions
